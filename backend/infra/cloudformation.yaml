@@ -188,7 +188,7 @@ Resources:
     Type: AWS::ECS::Service
     Properties:
       Cluster: !Ref AgentCluster
-      DesiredCount: 0 # Initially set to 0 because the image doesn't exist yet
+      DesiredCount: 1
       TaskDefinition: !Ref AgentExampleTaskDefinition
       LaunchType: FARGATE
       NetworkConfiguration:
