@@ -1,12 +1,12 @@
 name: Deploy Infrastructure to AWS ECS
 
 on:
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - "backend/**"
-  #     - ".github/workflows/deploy-infra.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-infra.yaml"
   workflow_dispatch:
     inputs:
       version:
@@ -74,6 +74,7 @@ jobs:
             LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
             LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            SERPER_API_KEY=${{ secrets.SERPER_API_KEY }}
 
       - name: Update CloudFormation template with new image
         run: |

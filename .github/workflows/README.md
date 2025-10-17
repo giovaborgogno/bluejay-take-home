@@ -1,21 +1,21 @@
 # GitHub Actions - Deploy Infrastructure
 
-Este directorio contiene workflows de GitHub Actions para automatizar el deploy de la infraestructura AWS ECS.
+This directory contains GitHub Actions workflows to automate the deployment of AWS ECS infrastructure.
 
-## Configuración
+## Setup
 
-### 1. Configurar GitHub Secrets
+### 1. Configure GitHub Secrets
 
-En tu repositorio de GitHub, ve a **Settings > Secrets and variables > Actions** y agrega los siguientes secrets:
+In your GitHub repository, go to **Settings > Secrets and variables > Actions** and add the following secrets:
 
-- `AWS_ACCESS_KEY_ID`: Tu AWS Access Key ID
-- `AWS_SECRET_ACCESS_KEY`: Tu AWS Secret Access Key
+- `AWS_ACCESS_KEY_ID`: Your AWS Access Key ID
+- `AWS_SECRET_ACCESS_KEY`: Your AWS Secret Access Key
 
-⚠️ **Importante**: Nunca pongas estas credenciales directamente en el código. Solo en GitHub Secrets.
+⚠️ **Important**: Never put these credentials directly in the code. Only in GitHub Secrets.
 
-### 2. Crear Secrets en AWS Secrets Manager
+### 2. Create Secrets in AWS Secrets Manager
 
-Antes de ejecutar el deploy, asegúrate de crear los secrets necesarios:
+Before running the deployment, make sure to create the necessary secrets:
 
 ```bash
 # LiveKit URL
@@ -40,67 +40,74 @@ aws secretsmanager create-secret \
 aws secretsmanager create-secret \
   --name ecs/agent-example/openai-api-key \
   --region us-east-1 \
-  --secret-string "opena-api-key"
+  --secret-string "your-openai-api-key"
+
+# Serper API Key
+aws secretsmanager create-secret \
+  --name ecs/agent-example/serper-api-key \
+  --region us-east-1 \
+  --secret-string "your-serper-api-key"
 ```
 
-Actualiza el archivo `cloudformation.yaml` con los ARNs de estos secrets (reemplaza `<unique-id>` con el ID real).
+Update the `cloudformation.yaml` file with the ARNs of these secrets (replace `<unique-id>` with the actual ID).
 
-Para obtener los ARNs:
+To get the ARNs:
 
 ```bash
 aws secretsmanager describe-secret --secret-id ecs/agent-example/livekit-url
 aws secretsmanager describe-secret --secret-id ecs/agent-example/livekit-api-key
 aws secretsmanager describe-secret --secret-id ecs/agent-example/livekit-api-secret
 aws secretsmanager describe-secret --secret-id ecs/agent-example/openai-api-key
+aws secretsmanager describe-secret --secret-id ecs/agent-example/serper-api-key
 ```
 
-### 3. Configurar variables de entorno (opcional)
+### 3. Configure environment variables (optional)
 
-Puedes modificar las variables de entorno en el archivo `deploy-infra.yaml`:
+You can modify the environment variables in the `deploy-infra.yaml` file:
 
-- `AWS_REGION`: Región de AWS (por defecto: `us-east-1`)
-- `STACK_NAME`: Nombre del stack de CloudFormation (por defecto: `agents-stack`)
-- `ECR_REPOSITORY`: Nombre del repositorio ECR (por defecto: `agent-example`)
+- `AWS_REGION`: AWS Region (default: `us-east-1`)
+- `STACK_NAME`: CloudFormation stack name (default: `agents-stack`)
+- `ECR_REPOSITORY`: ECR repository name (default: `agent-example`)
 
-## Uso
+## Usage
 
-### Deploy automático
+### Automatic deployment
 
-El workflow se ejecuta automáticamente cuando:
+The workflow runs automatically when:
 
-- Se hace push a la rama `main` con cambios en `backend/` o en el workflow
+- You push to the `main` branch with changes in `backend/` or in the workflow
 
-### Deploy manual
+### Manual deployment
 
-1. Ve a **Actions** en GitHub
-2. Selecciona el workflow **Deploy Infrastructure to AWS ECS**
-3. Click en **Run workflow**
-4. (Opcional) Especifica una versión personalizada para la imagen Docker
-5. Click en **Run workflow**
+1. Go to **Actions** in GitHub
+2. Select the **Deploy Infrastructure to AWS ECS** workflow
+3. Click on **Run workflow**
+4. (Optional) Specify a custom version for the Docker image
+5. Click on **Run workflow**
 
-## Versionamiento
+## Versioning
 
-El workflow genera automáticamente tags de versión con el formato:
+The workflow automatically generates version tags with the format:
 
 ```
 YYYYMMDD-HHMMSS-<git-sha>
 ```
 
-Por ejemplo: `20231025-143022-abc1234`
+For example: `20231025-143022-abc1234`
 
-Cada imagen también se tagea como `latest`.
+Each image is also tagged as `latest`.
 
-## Monitoreo
+## Monitoring
 
-Después del deploy, puedes monitorear tu aplicación:
+After deployment, you can monitor your application:
 
-### Ver logs en CloudWatch:
+### View CloudWatch logs:
 
 ```bash
 aws logs tail /ecs/agent-example --follow
 ```
 
-### Ver estado del servicio:
+### View service status:
 
 ```bash
 aws ecs describe-services \
@@ -109,7 +116,7 @@ aws ecs describe-services \
   --region us-east-1
 ```
 
-### Ver tareas en ejecución:
+### View running tasks:
 
 ```bash
 aws ecs list-tasks \
@@ -122,55 +129,55 @@ aws ecs list-tasks \
 
 ### Error: "Stack does not exist"
 
-Si es la primera vez que ejecutas el workflow, el stack será creado automáticamente. Asegúrate de que:
+If this is the first time you run the workflow, the stack will be created automatically. Make sure that:
 
-1. Los secrets de AWS Secrets Manager existen
-2. Los ARNs en `cloudformation.yaml` son correctos
-3. El `DesiredCount` está en `0` para el primer deploy
+1. AWS Secrets Manager secrets exist
+2. The ARNs in `cloudformation.yaml` are correct
+3. The `DesiredCount` is set to `0` for the first deployment
 
 ### Error: "No changes to deploy"
 
-Esto es normal cuando no hay cambios en la infraestructura. El workflow continuará y forzará un nuevo deploy de la imagen Docker.
+This is normal when there are no changes to the infrastructure. The workflow will continue and force a new deployment of the Docker image.
 
-### Error de permisos
+### Permission errors
 
-Verifica que tu usuario de AWS IAM tiene los permisos necesarios para:
+Verify that your AWS IAM user has the necessary permissions for:
 
 - ECR (Amazon Elastic Container Registry)
 - ECS (Amazon Elastic Container Service)
 - CloudFormation
-- IAM (para crear roles)
-- EC2 (para VPC, subnets, security groups)
+- IAM (to create roles)
+- EC2 (for VPC, subnets, security groups)
 - CloudWatch Logs
 
-## Escalar el servicio
+## Scaling the service
 
-Para cambiar el número de instancias en ejecución, modifica `DesiredCount` en el archivo `cloudformation.yaml` y haz commit. El workflow detectará el cambio y actualizará el stack automáticamente.
+To change the number of running instances, modify `DesiredCount` in the `cloudformation.yaml` file and commit. The workflow will detect the change and automatically update the stack.
 
 ```yaml
 AgentExampleService:
   Type: AWS::ECS::Service
   Properties:
     # ...
-    DesiredCount: 1 # Cambia este valor
+    DesiredCount: 1 # Change this value
 ```
 
 ## Rollback
 
-Para hacer rollback a una versión anterior:
+To rollback to a previous version:
 
-1. Ejecuta el workflow manualmente
-2. Especifica la versión anterior en el input `version`
-3. El workflow deployará esa versión específica
+1. Run the workflow manually
+2. Specify the previous version in the `version` input
+3. The workflow will deploy that specific version
 
-También puedes hacer rollback manual:
+You can also rollback manually:
 
 ```bash
-# Listar versiones de imágenes
+# List image versions
 aws ecr list-images --repository-name agent-example --region us-east-1
 
-# Actualizar el CloudFormation con la versión deseada
-# Edita cloudformation.yaml y ejecuta:
+# Update CloudFormation with the desired version
+# Edit cloudformation.yaml and run:
 aws cloudformation update-stack \
   --stack-name agents-stack \
   --template-body file://cloudformation.yaml \

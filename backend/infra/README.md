@@ -55,6 +55,11 @@ aws secretsmanager create-secret \
   --name ecs/agent-example/openai-api-key \
   --region us-east-1 \
   --secret-string "your-openai-api-key"
+
+aws secretsmanager create-secret \
+  --name ecs/agent-example/serper-api-key \
+  --region us-east-1 \
+  --secret-string "your-serper-api-key"
 ```
 
 Update the cloudformation.yaml with the arn from these created secrets.
