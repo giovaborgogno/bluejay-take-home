@@ -106,12 +106,6 @@ Resources:
   AgentCluster:
     Type: AWS::ECS::Cluster
 
-  # Create an Amazon ECR repository to store Docker images
-  DockerRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: agent-example
-
   # Define an IAM role for ECS task execution
   TaskExecutionRole:
     Type: AWS::IAM::Role
@@ -171,7 +165,7 @@ Resources:
       ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
       ContainerDefinitions:
         - Name: agent-example
-          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepository}:<version>"
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/agent-example:<version>"
           Essential: true
           Secrets:
             - Name: LIVEKIT_URL
@@ -219,7 +213,7 @@ Outputs:
 
   RepositoryUri:
     Description: ECR Repository URI
-    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepository}"
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/agent-example"
     Export:
       Name: !Sub "${AWS::StackName}-RepositoryUri"
 
