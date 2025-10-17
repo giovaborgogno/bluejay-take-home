@@ -2,23 +2,28 @@
   <img src="./.github/assets/livekit-mark.png" alt="LiveKit logo" width="100" height="100">
 </a>
 
-# LiveKit Agents Starter - Python
+# AI Co-Founder Simulator - LiveKit Voice Agent
 
-A complete starter project for building voice AI apps with [LiveKit Agents for Python](https://github.com/livekit/agents) and [LiveKit Cloud](https://cloud.livekit.io/).
+A brutally honest YC-style co-founder you can talk to, built with [LiveKit Agents for Python](https://github.com/livekit/agents) and [LiveKit Cloud](https://cloud.livekit.io/).
 
-The starter project includes:
+## 🧠 What is this?
 
-- A simple voice AI assistant with **RAG (Retrieval-Augmented Generation)** capabilities for knowledge base integration
-- A voice AI pipeline with [models](https://docs.livekit.io/agents/models) from OpenAI, Cartesia, and AssemblyAI served through LiveKit Cloud
-  - Easily integrate your preferred [LLM](https://docs.livekit.io/agents/models/llm/), [STT](https://docs.livekit.io/agents/models/stt/), and [TTS](https://docs.livekit.io/agents/models/tts/) instead, or swap to a realtime model like the [OpenAI Realtime API](https://docs.livekit.io/agents/models/realtime/openai)
-- RAG implementation using LlamaIndex for document retrieval and context injection
-- Eval suite based on the LiveKit Agents [testing & evaluation framework](https://docs.livekit.io/agents/build/testing/)
-- [LiveKit Turn Detector](https://docs.livekit.io/agents/build/turns/turn-detector/) for contextually-aware speaker detection, with multilingual support
+The AI Co-Founder Simulator gives you direct, unsweetened feedback on your startup ideas, market strategy, and distribution — modeled after the early Y Combinator advisors. It challenges your assumptions and helps you find leverage points fast.
+
+> "Your idea's fine, but your distribution sucks. Let's fix that."
+
+The agent includes:
+
+- **Brutally honest YC-style personality**: Direct, insightful, and slightly ruthless
+- **RAG with Peter Thiel's "Zero to One"**: Ask questions about Thiel's startup philosophy with chapter-aware citations
+- **Real-time competitor search**: Web search tool to validate competitors and market claims
+- **Voice AI pipeline** with models from OpenAI, Cartesia, and AssemblyAI
+- **Modular architecture**: Separated RAG engine, web search tool, and agent logic
+- [LiveKit Turn Detector](https://docs.livekit.io/agents/build/turns/turn-detector/) for contextually-aware speaker detection
 - [Background voice cancellation](https://docs.livekit.io/home/cloud/noise-cancellation/)
-- Integrated [metrics and logging](https://docs.livekit.io/agents/build/metrics/)
 - A Dockerfile ready for [production deployment](https://docs.livekit.io/agents/ops/deployment/)
 
-This starter app is compatible with any [custom web/mobile frontend](https://docs.livekit.io/agents/start/frontend/) or [SIP-based telephony](https://docs.livekit.io/agents/start/telephony/).
+This agent is compatible with any [custom web/mobile frontend](https://docs.livekit.io/agents/start/frontend/) or [SIP-based telephony](https://docs.livekit.io/agents/start/telephony/).
 
 ## Dev Setup
 
@@ -34,7 +39,10 @@ Sign up for [LiveKit Cloud](https://cloud.livekit.io/) then set up the environme
 - `LIVEKIT_URL`
 - `LIVEKIT_API_KEY`
 - `LIVEKIT_API_SECRET`
-- `OPENAI_API_KEY` (required for RAG embeddings)
+- `OPENAI_API_KEY` (required for LLM and RAG embeddings)
+- `ASSEMBLYAI_API_KEY` (required for speech-to-text)
+- `CARTESIA_API_KEY` (required for text-to-speech)
+- `SERPER_API_KEY` (required for web search - get it from [serper.dev](https://serper.dev/))
 
 You can load the LiveKit environment automatically using the [LiveKit CLI](https://docs.livekit.io/home/cli/cli-setup):
 
@@ -43,15 +51,38 @@ lk cloud auth
 lk app env -w -d .env.local
 ```
 
-### RAG (Retrieval-Augmented Generation) Setup
+### RAG Setup - Zero to One Knowledge Base
 
-This starter includes RAG capabilities using LlamaIndex to enhance the assistant with a knowledge base:
+The agent has access to Peter Thiel's "Zero to One" through a sophisticated RAG system:
 
-1. **Add your documents**: Place any text files (`.txt`, `.md`, `.pdf`, etc.) in the `src/data/` directory
-2. **First run**: The agent will automatically create a vector index from your documents
-3. **Subsequent runs**: The agent will load the pre-built index for faster startup
+1. **Document**: The PDF is located in `src/data/zero-to-one.pdf`
+2. **Chapter parsing**: The RAG engine automatically extracts chapter names and page numbers for accurate citations
+3. **First run**: The agent will create a vector index with chapter-aware metadata
+4. **Subsequent runs**: The pre-built index loads instantly
 
-The RAG index is stored in `src/retrieval-engine-storage/` and persists between runs. To rebuild the index with new documents, simply delete this directory and restart the agent.
+The RAG index is stored in `src/retrieval-engine-storage/` and persists between runs. To rebuild the index (e.g., after adding new documents), delete this directory and restart the agent.
+
+**Example interaction:**
+
+- User: "What does Thiel say about monopolies?"
+- Agent: "Chapter: You Are Not A Lottery Ticket, p. 47 — Thiel argues that monopolies drive progress..."
+
+### Web Search Tool
+
+The agent can search the web for competitor validation and market research using [Serper.dev](https://serper.dev/). Make sure to add your `SERPER_API_KEY` to `.env.local`.
+
+**Example interaction:**
+
+- User: "Who else is doing AI voice assistants?"
+- Agent: _searches web and returns competitors_
+
+### Architecture
+
+The codebase is modular:
+
+- `src/rag_engine.py` - RAG initialization with chapter parsing
+- `src/cofounder_agent.py` - CofounderAgent class with YC personality and integrated web search tool
+- `src/agent.py` - Main entrypoint and session setup
 
 ## Run the agent
 

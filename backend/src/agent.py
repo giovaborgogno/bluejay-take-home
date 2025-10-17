@@ -3,7 +3,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from livekit.agents import (
-    Agent,
     AgentSession,
     JobContext,
     JobProcess,
@@ -11,19 +10,13 @@ from livekit.agents import (
     RoomInputOptions,
     WorkerOptions,
     cli,
-    llm,
     metrics,
 )
-from livekit.agents.voice.agent import ModelSettings
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from llama_index.core import (
-    SimpleDirectoryReader,
-    StorageContext,
-    VectorStoreIndex,
-    load_index_from_storage,
-)
-from llama_index.core.schema import MetadataMode
+
+from cofounder_agent import CofounderAgent
+from rag_engine import initialize_rag_index
 
 logger = logging.getLogger("agent")
 
@@ -31,104 +24,14 @@ load_dotenv(".env.local")
 
 # Initialize RAG index
 THIS_DIR = Path(__file__).parent
+DATA_DIR = THIS_DIR / "data"
 PERSIST_DIR = THIS_DIR / "retrieval-engine-storage"
 
-# Check if storage already exists
-if not PERSIST_DIR.exists():
-    logger.info("Creating new RAG index from documents...")
-    # Load the documents and create the index
-    documents = SimpleDirectoryReader(THIS_DIR / "data").load_data()
-    index = VectorStoreIndex.from_documents(documents)
-    # Store it for later
-    index.storage_context.persist(persist_dir=PERSIST_DIR)
-    logger.info(f"RAG index created and saved to {PERSIST_DIR}")
-else:
-    # Load the existing index
-    logger.info(f"Loading existing RAG index from {PERSIST_DIR}")
-    storage_context = StorageContext.from_defaults(persist_dir=PERSIST_DIR)
-    index = load_index_from_storage(storage_context)
+index = initialize_rag_index(DATA_DIR, PERSIST_DIR)
 
 
-class Assistant(Agent):
-    def __init__(self) -> None:
-        super().__init__(
-            instructions="""You are a helpful voice AI assistant. The user is interacting with you via voice, even if you perceive the conversation as text.
-            You eagerly assist users with their questions by providing information from your extensive knowledge.
-            Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
-            You are curious, friendly, and have a sense of humor.""",
-        )
-
-    # To add tools, use the @function_tool decorator.
-    # Here's an example that adds a simple weather tool.
-    # You also have to add `from livekit.agents import function_tool, RunContext` to the top of this file
-    # @function_tool
-    # async def lookup_weather(self, context: RunContext, location: str):
-    #     """Use this tool to look up current weather information in the given location.
-    #
-    #     If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.
-    #
-    #     Args:
-    #         location: The location to look up weather information for (e.g. city name)
-    #     """
-    #
-    #     logger.info(f"Looking up weather for {location}")
-    #
-    #     return "sunny with a temperature of 70 degrees."
-
-
-class RetrievalAssistant(Agent):
-    """Voice assistant with RAG (Retrieval-Augmented Generation) capabilities."""
-
-    def __init__(self, index: VectorStoreIndex):
-        super().__init__(
-            instructions="""You are a helpful voice AI assistant with access to a knowledge base.
-            The user is interacting with you via voice, even if you perceive the conversation as text.
-            You eagerly assist users with their questions by using both your general knowledge and the specific
-            information retrieved from the knowledge base.
-            Your responses are concise, to the point, and without any complex formatting or punctuation
-            including emojis, asterisks, or other symbols.
-            You are curious, friendly, and have a sense of humor.""",
-        )
-        self.index = index
-        logger.info("RetrievalAssistant initialized with RAG index")
-
-    async def llm_node(
-        self,
-        chat_ctx: llm.ChatContext,
-        tools: list[llm.FunctionTool],
-        model_settings: ModelSettings,
-    ):
-        """Override llm_node to inject retrieved context from the knowledge base."""
-        user_msg = chat_ctx.items[-1]
-        assert isinstance(user_msg, llm.ChatMessage) and user_msg.role == "user"
-        user_query = user_msg.text_content
-        assert user_query is not None
-
-        # Retrieve relevant documents from the index
-        retriever = self.index.as_retriever()
-        nodes = await retriever.aretrieve(user_query)
-
-        # Build context from retrieved documents
-        instructions = "\n\nContext from knowledge base that might help answer the user's question:"
-        for node in nodes:
-            node_content = node.get_content(metadata_mode=MetadataMode.LLM)
-            instructions += f"\n\n{node_content}"
-
-        # Inject the retrieved context into the chat context
-        system_msg = chat_ctx.items[0]
-        if isinstance(system_msg, llm.ChatMessage) and system_msg.role == "system":
-            system_msg.content.append(instructions)
-        else:
-            chat_ctx.items.insert(
-                0, llm.ChatMessage(role="system", content=[instructions])
-            )
-
-        logger.info(f"Retrieved {len(nodes)} documents for query: {user_query[:50]}...")
-        debug_context = instructions[:200].replace("\n", "\\n")
-        logger.debug(f"Context injected: {debug_context}...")
-
-        # Call the default LLM node with the enriched context
-        return Agent.default.llm_node(self, chat_ctx, tools, model_settings)
+# Agent classes are now in separate modules
+# CofounderAgent is imported from cofounder_agent.py
 
 
 def prewarm(proc: JobProcess):
@@ -196,9 +99,9 @@ async def entrypoint(ctx: JobContext):
     # await avatar.start(session, room=ctx.room)
 
     # Start the session, which initializes the voice pipeline and warms up the models
-    # Using RetrievalAssistant instead of Assistant to enable RAG capabilities
+    # Using CofounderAgent - AI Co-Founder Simulator with RAG and web search
     await session.start(
-        agent=RetrievalAssistant(index),
+        agent=CofounderAgent(index),
         room=ctx.room,
         room_input_options=RoomInputOptions(
             # For telephony applications, use `BVCTelephony` for best results

@@ -15,6 +15,9 @@ dependencies = [
     "llama-index-core",
     "llama-index-embeddings-openai",
     "llama-index-llms-openai",
+    "llama-index-readers-file",
+    "httpx",
+    "pymupdf",
 ]
 
 [dependency-groups]
