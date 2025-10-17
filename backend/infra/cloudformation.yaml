@@ -175,11 +175,13 @@ Resources:
           Essential: true
           Secrets:
             - Name: LIVEKIT_URL
-              ValueFrom: arn:aws:secretsmanager:us-east-1:203125320322:secret:ecs/agent-example/livekit-url-<unique-id>
+              ValueFrom: arn:aws:secretsmanager:us-east-1:582097323605:secret:ecs/agent-example/livekit-url-JOz6Sr
             - Name: LIVEKIT_API_KEY
-              ValueFrom: arn:aws:secretsmanager:us-east-1:203125320322:secret:ecs/agent-example/livekit-api-key-<unique-id>
+              ValueFrom: arn:aws:secretsmanager:us-east-1:582097323605:secret:ecs/agent-example/livekit-api-key-XZgEWy
             - Name: LIVEKIT_API_SECRET
-              ValueFrom: arn:aws:secretsmanager:us-east-1:203125320322:secret:ecs/agent-example/livekit-api-secret-<unique-id>
+              ValueFrom: arn:aws:secretsmanager:us-east-1:582097323605:secret:ecs/agent-example/livekit-api-secret-H3XfMC
+            - Name: OPENAI_API_KEY
+              ValueFrom: arn:aws:secretsmanager:us-east-1:582097323605:secret:ecs/agent-example/openai-api-key-I2v3a7
           LogConfiguration:
             LogDriver: awslogs
             Options:

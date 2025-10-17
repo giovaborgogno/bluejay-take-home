@@ -35,6 +35,12 @@ aws secretsmanager create-secret \
   --name ecs/agent-example/livekit-api-secret \
   --region us-east-1 \
   --secret-string "your-api-secret"
+
+# OpenAI API Key
+aws secretsmanager create-secret \
+  --name ecs/agent-example/openai-api-key \
+  --region us-east-1 \
+  --secret-string "opena-api-key"
 ```
 
 Actualiza el archivo `cloudformation.yaml` con los ARNs de estos secrets (reemplaza `<unique-id>` con el ID real).
@@ -45,6 +51,7 @@ Para obtener los ARNs:
 aws secretsmanager describe-secret --secret-id ecs/agent-example/livekit-url
 aws secretsmanager describe-secret --secret-id ecs/agent-example/livekit-api-key
 aws secretsmanager describe-secret --secret-id ecs/agent-example/livekit-api-secret
+aws secretsmanager describe-secret --secret-id ecs/agent-example/openai-api-key
 ```
 
 ### 3. Configurar variables de entorno (opcional)
