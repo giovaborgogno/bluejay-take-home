@@ -1,0 +1,141 @@
+name: Deploy Infrastructure to AWS ECS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-infra.yaml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag for the Docker image'
+        required: false
+        default: 'latest'
+
+env:
+  AWS_REGION: us-east-1
+  STACK_NAME: agents-stack
+  ECR_REPOSITORY: agent-example
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Determine version tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.version.outputs.tag }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update CloudFormation template with new image
+        run: |
+          cd backend/infra
+          sed -i.bak "s|<version>|${{ steps.version.outputs.tag }}|g" cloudformation.yaml
+
+      - name: Deploy CloudFormation stack
+        run: |
+          cd backend/infra
+          
+          # Check if stack exists
+          if aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }} 2>&1 | grep -q "does not exist"; then
+            echo "Creating new CloudFormation stack..."
+            aws cloudformation create-stack \
+              --stack-name ${{ env.STACK_NAME }} \
+              --template-body file://cloudformation.yaml \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --region ${{ env.AWS_REGION }}
+            
+            echo "Waiting for stack creation to complete..."
+            aws cloudformation wait stack-create-complete \
+              --stack-name ${{ env.STACK_NAME }} \
+              --region ${{ env.AWS_REGION }}
+          else
+            echo "Updating existing CloudFormation stack..."
+            aws cloudformation update-stack \
+              --stack-name ${{ env.STACK_NAME }} \
+              --template-body file://cloudformation.yaml \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --region ${{ env.AWS_REGION }} || true
+            
+            echo "Waiting for stack update to complete..."
+            aws cloudformation wait stack-update-complete \
+              --stack-name ${{ env.STACK_NAME }} \
+              --region ${{ env.AWS_REGION }} || true
+          fi
+
+      - name: Force new ECS deployment
+        run: |
+          CLUSTER_NAME=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
+            --output text)
+          
+          SERVICE_NAME=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='ServiceName'].OutputValue" \
+            --output text)
+          
+          if [ -n "$CLUSTER_NAME" ] && [ -n "$SERVICE_NAME" ]; then
+            echo "Forcing new deployment for service $SERVICE_NAME in cluster $CLUSTER_NAME"
+            aws ecs update-service \
+              --cluster "$CLUSTER_NAME" \
+              --service "$SERVICE_NAME" \
+              --force-new-deployment \
+              --region ${{ env.AWS_REGION }}
+          else
+            echo "Using default values..."
+            aws ecs update-service \
+              --cluster AgentCluster \
+              --service AgentExampleService \
+              --force-new-deployment \
+              --region ${{ env.AWS_REGION }} || echo "Could not force deployment - stack might be new"
+          fi
+
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stack Name**: ${{ env.STACK_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Version**: ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **ECR Repository**: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}" >> $GITHUB_STEP_SUMMARY
+

@@ -1,0 +1,165 @@
+name: Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "DESTROY" to confirm deletion'
+        required: true
+      delete_ecr_images:
+        description: 'Delete all ECR images'
+        required: false
+        default: 'true'
+        type: boolean
+      delete_secrets:
+        description: 'Delete AWS Secrets Manager secrets'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  STACK_NAME: agents-stack
+  ECR_REPOSITORY: agent-example
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DESTROY" ]; then
+            echo "❌ Confirmation failed. You must type 'DESTROY' to proceed."
+            exit 1
+          fi
+          echo "✅ Confirmation validated"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check if stack exists
+        id: check-stack
+        run: |
+          if aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }} 2>&1 | grep -q "does not exist"; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Stack does not exist"
+          else
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Stack exists"
+          fi
+
+      - name: Scale down ECS service
+        if: steps.check-stack.outputs.exists == 'true'
+        run: |
+          echo "Scaling down ECS service to 0..."
+          
+          CLUSTER_NAME=$(aws cloudformation describe-stack-resource \
+            --stack-name ${{ env.STACK_NAME }} \
+            --logical-resource-id AgentCluster \
+            --region ${{ env.AWS_REGION }} \
+            --query 'StackResourceDetail.PhysicalResourceId' \
+            --output text) || echo "Could not get cluster name"
+          
+          SERVICE_NAME=$(aws cloudformation describe-stack-resource \
+            --stack-name ${{ env.STACK_NAME }} \
+            --logical-resource-id AgentExampleService \
+            --region ${{ env.AWS_REGION }} \
+            --query 'StackResourceDetail.PhysicalResourceId' \
+            --output text) || echo "Could not get service name"
+          
+          if [ -n "$CLUSTER_NAME" ] && [ -n "$SERVICE_NAME" ]; then
+            aws ecs update-service \
+              --cluster "$CLUSTER_NAME" \
+              --service "$SERVICE_NAME" \
+              --desired-count 0 \
+              --region ${{ env.AWS_REGION }} || echo "Could not scale down service"
+            
+            echo "Waiting for tasks to stop..."
+            sleep 30
+          fi
+
+      - name: Delete ECR images
+        if: ${{ github.event.inputs.delete_ecr_images == 'true' && steps.check-stack.outputs.exists == 'true' }}
+        run: |
+          echo "Deleting all images from ECR repository..."
+          
+          # Get all image IDs
+          IMAGE_IDS=$(aws ecr list-images \
+            --repository-name ${{ env.ECR_REPOSITORY }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'imageIds[*]' \
+            --output json) || echo "[]"
+          
+          if [ "$IMAGE_IDS" != "[]" ]; then
+            aws ecr batch-delete-image \
+              --repository-name ${{ env.ECR_REPOSITORY }} \
+              --image-ids "$IMAGE_IDS" \
+              --region ${{ env.AWS_REGION }} || echo "Could not delete images"
+            echo "✅ Deleted ECR images"
+          else
+            echo "ℹ️ No images to delete"
+          fi
+
+      - name: Delete CloudFormation stack
+        if: steps.check-stack.outputs.exists == 'true'
+        run: |
+          echo "Deleting CloudFormation stack..."
+          
+          aws cloudformation delete-stack \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }}
+          
+          echo "Waiting for stack deletion to complete..."
+          aws cloudformation wait stack-delete-complete \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }}
+          
+          echo "✅ Stack deleted successfully"
+
+      - name: Delete AWS Secrets
+        if: ${{ github.event.inputs.delete_secrets == 'true' }}
+        run: |
+          echo "Deleting AWS Secrets Manager secrets..."
+          
+          SECRETS=(
+            "ecs/agent-example/livekit-url"
+            "ecs/agent-example/livekit-api-key"
+            "ecs/agent-example/livekit-api-secret"
+          )
+          
+          for SECRET in "${SECRETS[@]}"; do
+            echo "Deleting secret: $SECRET"
+            aws secretsmanager delete-secret \
+              --secret-id "$SECRET" \
+              --force-delete-without-recovery \
+              --region ${{ env.AWS_REGION }} || echo "Could not delete $SECRET (may not exist)"
+          done
+          
+          echo "✅ Secrets deletion initiated"
+
+      - name: Cleanup summary
+        run: |
+          echo "## Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stack Name**: ${{ env.STACK_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **ECR Images Deleted**: ${{ github.event.inputs.delete_ecr_images }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Secrets Deleted**: ${{ github.event.inputs.delete_secrets }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Resources Cleaned Up" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ CloudFormation Stack" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.delete_ecr_images }}" == "true" ]; then
+            echo "- ✅ ECR Images" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ github.event.inputs.delete_secrets }}" == "true" ]; then
+            echo "- ✅ AWS Secrets Manager Secrets" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Note**: Some resources may take a few minutes to be fully removed from AWS." >> $GITHUB_STEP_SUMMARY
+
