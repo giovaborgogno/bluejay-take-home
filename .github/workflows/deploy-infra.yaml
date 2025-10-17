@@ -1,12 +1,12 @@
 name: Deploy Infrastructure to AWS ECS
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "backend/**"
-      - ".github/workflows/deploy-infra.yaml"
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "backend/**"
+  #     - ".github/workflows/deploy-infra.yaml"
   workflow_dispatch:
     inputs:
       version:
