@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import type { AppConfig } from '@/app-config';
 import { ChatTranscript } from '@/components/app/chat-transcript';
@@ -71,6 +71,13 @@ export const SessionView = ({
 
   const messages = useChatMessages();
   const [chatOpen, setChatOpen] = useState(false);
+
+  // Auto-open chat when first message arrives
+  useEffect(() => {
+    if (messages.length > 0 && !chatOpen) {
+      setChatOpen(true);
+    }
+  }, [messages, chatOpen]);
 
   const controls: ControlBarControls = {
     leave: true,

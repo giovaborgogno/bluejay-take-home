@@ -78,20 +78,20 @@ This starter is designed to be flexible so you can adapt it to your specific age
 
 ```ts
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'LiveKit',
-  pageTitle: 'LiveKit Voice Agent',
-  pageDescription: 'A voice agent built with LiveKit',
+  companyName: 'Y Combinator',
+  pageTitle: 'YC AI Cofounder',
+  pageDescription: 'Your AI cofounder powered by Y Combinator',
 
   supportsChatInput: true,
   supportsVideoInput: true,
   supportsScreenShare: true,
   isPreConnectBufferEnabled: true,
 
-  logo: '/lk-logo.svg',
-  accent: '#002cf2',
-  logoDark: '/lk-logo-dark.svg',
-  accentDark: '#1fd5f9',
-  startButtonText: 'Start call',
+  logo: '/yc-logo.svg',
+  accent: '#FF6600',
+  logoDark: '/yc-logo.svg',
+  accentDark: '#FF7A1F',
+  startButtonText: 'Talk to your cofounder',
 
   // for LiveKit Cloud Sandbox
   sandboxId: undefined,

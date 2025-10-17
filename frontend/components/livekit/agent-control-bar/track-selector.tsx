@@ -56,7 +56,7 @@ export function TrackSelector({
             <span
               className={cn([
                 'h-full w-0.5 origin-center rounded-2xl',
-                'group-data-[state=on]/track:bg-foreground group-data-[state=off]/track:bg-destructive',
+                'group-data-[state=on]/track:bg-primary group-data-[state=off]/track:bg-destructive',
                 'data-lk-muted:bg-muted',
               ])}
             />

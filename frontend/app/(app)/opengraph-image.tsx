@@ -19,7 +19,7 @@ type ImageData = {
 };
 
 // Image metadata
-export const alt = 'About Acme';
+export const alt = 'YC AI Cofounder';
 export const size = {
   width: 1200,
   height: 628,
@@ -92,7 +92,7 @@ function scaleImageSize(size: { width: number; height: number }, desiredHeight: 
 
 function cleanPageTitle(appName: string) {
   if (appName === APP_CONFIG_DEFAULTS.pageTitle) {
-    return 'Voice agent';
+    return 'AI Cofounder';
   }
 
   return appName;

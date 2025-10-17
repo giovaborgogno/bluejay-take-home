@@ -20,20 +20,20 @@ export interface AppConfig {
 }
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'LiveKit',
-  pageTitle: 'LiveKit Voice Agent',
-  pageDescription: 'A voice agent built with LiveKit',
+  companyName: 'Gio',
+  pageTitle: 'YC AI Cofounder',
+  pageDescription: `Your AI cofounder. Building something great? Let's talk.`,
 
   supportsChatInput: true,
   supportsVideoInput: true,
   supportsScreenShare: true,
   isPreConnectBufferEnabled: true,
 
-  logo: '/lk-logo.svg',
-  accent: '#002cf2',
-  logoDark: '/lk-logo-dark.svg',
-  accentDark: '#1fd5f9',
-  startButtonText: 'Start call',
+  logo: '/yc-logo.png',
+  accent: '#fe7b1d',
+  logoDark: '/yc-logo.png',
+  accentDark: '#fe7b1d',
+  startButtonText: 'Talk to your cofounder',
 
   // for LiveKit Cloud Sandbox
   sandboxId: undefined,
