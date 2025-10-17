@@ -1,4 +1,5 @@
 import logging
+import random
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,6 +17,7 @@ from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from agent import CofounderAgent
+from prompts import WELCOME_MESSAGES
 from rag_engine import initialize_rag_index
 
 logger = logging.getLogger("entrypoint")
@@ -89,6 +91,11 @@ async def entrypoint(ctx: JobContext):
 
     # Join the room and connect to the user
     await ctx.connect()
+
+    # Send a random welcome message when the session starts
+    welcome_message = random.choice(WELCOME_MESSAGES)
+    logger.info(f"Sending welcome message: {welcome_message}")
+    await session.say(welcome_message, allow_interruptions=False)
 
 
 if __name__ == "__main__":
