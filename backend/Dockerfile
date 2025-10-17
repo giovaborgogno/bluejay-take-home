@@ -10,6 +10,17 @@ FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS base
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
 
+# Accept LiveKit credentials as build arguments
+# These are needed for the download-files step
+ARG LIVEKIT_API_KEY
+ARG LIVEKIT_API_SECRET
+ARG LIVEKIT_URL
+
+# Set them as environment variables
+ENV LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+ENV LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+ENV LIVEKIT_URL=${LIVEKIT_URL}
+
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
 ARG UID=10001

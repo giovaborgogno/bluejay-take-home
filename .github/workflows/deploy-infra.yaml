@@ -64,6 +64,10 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY }}
+            LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}
+            LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}
 
       - name: Update CloudFormation template with new image
         run: |
