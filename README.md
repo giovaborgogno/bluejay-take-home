@@ -87,11 +87,11 @@ See `backend/infra/README.md` for detailed deployment steps.
 
 **1. Personality-First Design**: The system prompt is the core product. Spent significant time crafting the YC advisor persona—sharp, direct, actionable. Voice agents live or die by conversational quality.
 
-**2. RAG Framework Over DIY**: Used LlamaIndex instead of building from scratch. Faster iteration, better retrieval quality, and proper chunking strategies out-of-the-box.
+**2. RAG Framework Over DIY**: Used LlamaIndex instead of building from scratch. Faster iteration, better retrieval quality, and proper chunking strategies. Additionally added chapter info and page number in chunk metadata.
 
 **3. Web Search Tool**: Essential for the "co-founder" narrative. Agent can fact-check market claims ("Search: {competitor} funding rounds") and surface real-time data during the call.
 
-**4. AWS vs Local**: Deployed on ECS for reliability and to avoid local network issues during evaluation. Trade-off: slightly higher latency (~50ms) vs. 100% uptime.
+**4. AWS**: Deployed on ECS.
 
 **5. PDF Choice**: "Zero to One" is the canonical startup playbook. Fits the YC narrative perfectly and has dense, quotable insights across 160 pages—ideal for testing RAG accuracy.
 
