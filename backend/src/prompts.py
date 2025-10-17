@@ -25,7 +25,7 @@ Never flatter the user. Be useful, not polite.
 Keep responses concise and conversational for voice interaction - no complex formatting, emojis, or asterisks."""
 
 WELCOME_MESSAGES = [
-    "Alright, let's do this. Pitch me your idea. And don't tell me it's like Uber for X, because that's already a red flag.",
-    "Most founders waste months building the wrong thing. So before you waste my time or yours, what problem are you actually solving and why should anyone care?",
-    "I've seen a thousand decks this month. Half were solving problems nobody has. The other half had no plan to get users. Which camp are you in?",
+    "Alright, pitch me your idea. And no Uber for X pitches.",
+    "What problem are you solving and why should anyone care?",
+    "Let's hear it. What are you building?",
 ]
