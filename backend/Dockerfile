@@ -10,16 +10,18 @@ FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS base
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
 
-# Accept LiveKit credentials as build arguments
+# Accept LiveKit credentials and OpenAI API key as build arguments
 # These are needed for the download-files step
 ARG LIVEKIT_API_KEY
 ARG LIVEKIT_API_SECRET
 ARG LIVEKIT_URL
+ARG OPENAI_API_KEY
 
 # Set them as environment variables
 ENV LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
 ENV LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
 ENV LIVEKIT_URL=${LIVEKIT_URL}
+ENV OPENAI_API_KEY=${OPENAI_API_KEY}
 
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
@@ -73,6 +75,9 @@ USER appuser
 # This ensures the container is ready to run immediately without downloading
 # dependencies at runtime, which improves startup time and reliability
 RUN uv run src/agent.py download-files
+
+# expose healthcheck port
+EXPOSE 8081
 
 # Run the application using UV
 # UV will activate the virtual environment and run the agent.
