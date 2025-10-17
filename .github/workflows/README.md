@@ -4,108 +4,16 @@ Este directorio contiene workflows de GitHub Actions para automatizar el deploy 
 
 ## Configuración
 
-### 1. Configurar AWS OIDC (Recomendado)
+### 1. Configurar GitHub Secrets
 
-Para usar GitHub Actions con AWS de forma segura, configura OpenID Connect (OIDC) en lugar de usar credenciales de larga duración:
+En tu repositorio de GitHub, ve a **Settings > Secrets and variables > Actions** y agrega los siguientes secrets:
 
-#### Crear el Identity Provider en AWS:
+- `AWS_ACCESS_KEY_ID`: Tu AWS Access Key ID
+- `AWS_SECRET_ACCESS_KEY`: Tu AWS Secret Access Key
 
-```bash
-aws iam create-open-id-connect-provider \
-  --url https://token.actions.githubusercontent.com \
-  --client-id-list sts.amazonaws.com \
-  --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1
-```
+⚠️ **Importante**: Nunca pongas estas credenciales directamente en el código. Solo en GitHub Secrets.
 
-#### Crear el IAM Role:
-
-Crea un archivo `trust-policy.json`:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::<AWS_ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:<GITHUB_ORG>/<REPO_NAME>:*"
-        }
-      }
-    }
-  ]
-}
-```
-
-Reemplaza `<AWS_ACCOUNT_ID>`, `<GITHUB_ORG>`, y `<REPO_NAME>` con tus valores.
-
-Crea el role:
-
-```bash
-aws iam create-role \
-  --role-name GitHubActionsDeployRole \
-  --assume-role-policy-document file://trust-policy.json
-```
-
-#### Agregar permisos al role:
-
-```bash
-# Permisos para ECR
-aws iam attach-role-policy \
-  --role-name GitHubActionsDeployRole \
-  --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
-
-# Permisos para ECS
-aws iam attach-role-policy \
-  --role-name GitHubActionsDeployRole \
-  --policy-arn arn:aws:iam::aws:policy/AmazonECS_FullAccess
-
-# Permisos para CloudFormation
-aws iam attach-role-policy \
-  --role-name GitHubActionsDeployRole \
-  --policy-arn arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
-
-# Permisos adicionales para IAM (necesarios para CloudFormation)
-aws iam put-role-policy \
-  --role-name GitHubActionsDeployRole \
-  --policy-name AdditionalPermissions \
-  --policy-document '{
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Effect": "Allow",
-        "Action": [
-          "iam:CreateRole",
-          "iam:DeleteRole",
-          "iam:GetRole",
-          "iam:PassRole",
-          "iam:AttachRolePolicy",
-          "iam:DetachRolePolicy",
-          "iam:PutRolePolicy",
-          "iam:DeleteRolePolicy",
-          "ec2:*",
-          "logs:*"
-        ],
-        "Resource": "*"
-      }
-    ]
-  }'
-```
-
-### 2. Configurar GitHub Secrets
-
-En tu repositorio de GitHub, ve a **Settings > Secrets and variables > Actions** y agrega:
-
-- `AWS_ROLE_ARN`: ARN del role creado anteriormente (ej: `arn:aws:iam::<ACCOUNT_ID>:role/GitHubActionsDeployRole`)
-
-### 3. Crear Secrets en AWS Secrets Manager
+### 2. Crear Secrets en AWS Secrets Manager
 
 Antes de ejecutar el deploy, asegúrate de crear los secrets necesarios:
 
@@ -139,7 +47,7 @@ aws secretsmanager describe-secret --secret-id ecs/agent-example/livekit-api-key
 aws secretsmanager describe-secret --secret-id ecs/agent-example/livekit-api-secret
 ```
 
-### 4. Configurar variables de entorno (opcional)
+### 3. Configurar variables de entorno (opcional)
 
 Puedes modificar las variables de entorno en el archivo `deploy-infra.yaml`:
 
@@ -152,6 +60,7 @@ Puedes modificar las variables de entorno en el archivo `deploy-infra.yaml`:
 ### Deploy automático
 
 El workflow se ejecuta automáticamente cuando:
+
 - Se hace push a la rama `main` con cambios en `backend/` o en el workflow
 
 ### Deploy manual
@@ -165,6 +74,7 @@ El workflow se ejecuta automáticamente cuando:
 ## Versionamiento
 
 El workflow genera automáticamente tags de versión con el formato:
+
 ```
 YYYYMMDD-HHMMSS-<git-sha>
 ```
@@ -206,6 +116,7 @@ aws ecs list-tasks \
 ### Error: "Stack does not exist"
 
 Si es la primera vez que ejecutas el workflow, el stack será creado automáticamente. Asegúrate de que:
+
 1. Los secrets de AWS Secrets Manager existen
 2. Los ARNs en `cloudformation.yaml` son correctos
 3. El `DesiredCount` está en `0` para el primer deploy
@@ -216,7 +127,14 @@ Esto es normal cuando no hay cambios en la infraestructura. El workflow continua
 
 ### Error de permisos
 
-Verifica que el role de IAM tiene todos los permisos necesarios mencionados en la sección de configuración.
+Verifica que tu usuario de AWS IAM tiene los permisos necesarios para:
+
+- ECR (Amazon Elastic Container Registry)
+- ECS (Amazon Elastic Container Service)
+- CloudFormation
+- IAM (para crear roles)
+- EC2 (para VPC, subnets, security groups)
+- CloudWatch Logs
 
 ## Escalar el servicio
 
@@ -227,7 +145,7 @@ AgentExampleService:
   Type: AWS::ECS::Service
   Properties:
     # ...
-    DesiredCount: 1  # Cambia este valor
+    DesiredCount: 1 # Cambia este valor
 ```
 
 ## Rollback
@@ -252,4 +170,3 @@ aws cloudformation update-stack \
   --capabilities CAPABILITY_NAMED_IAM \
   --region us-east-1
 ```
-

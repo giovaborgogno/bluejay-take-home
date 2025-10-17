@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - 'backend/**'
-      - '.github/workflows/deploy-infra.yaml'
+      - "backend/**"
+      - ".github/workflows/deploy-infra.yaml"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag for the Docker image'
+        description: "Version tag for the Docker image"
         required: false
-        default: 'latest'
+        default: "latest"
 
 env:
   AWS_REGION: us-east-1
@@ -23,9 +23,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,7 +32,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -73,7 +73,7 @@ jobs:
       - name: Deploy CloudFormation stack
         run: |
           cd backend/infra
-          
+
           # Check if stack exists
           if aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }} 2>&1 | grep -q "does not exist"; then
             echo "Creating new CloudFormation stack..."
@@ -108,13 +108,13 @@ jobs:
             --region ${{ env.AWS_REGION }} \
             --query "Stacks[0].Outputs[?OutputKey=='ClusterName'].OutputValue" \
             --output text)
-          
+
           SERVICE_NAME=$(aws cloudformation describe-stacks \
             --stack-name ${{ env.STACK_NAME }} \
             --region ${{ env.AWS_REGION }} \
             --query "Stacks[0].Outputs[?OutputKey=='ServiceName'].OutputValue" \
             --output text)
-          
+
           if [ -n "$CLUSTER_NAME" ] && [ -n "$SERVICE_NAME" ]; then
             echo "Forcing new deployment for service $SERVICE_NAME in cluster $CLUSTER_NAME"
             aws ecs update-service \
@@ -138,4 +138,3 @@ jobs:
           echo "- **Region**: ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Image Version**: ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- **ECR Repository**: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}" >> $GITHUB_STEP_SUMMARY
-
