@@ -120,7 +120,54 @@ class CofounderAgent(Agent):
         Returns:
             str: Formatted search results with titles and links
         """
-        return await web_search_serper(context, query)
+        tool_span_cm = None
+        tool_span_ctx = None
+        result: str | None = None
+        tool_error: Exception | None = None
+
+        if self._trace:
+            try:
+                tool_span_cm = self._trace.span(
+                    name="web-search",
+                    input_data={"query": query},
+                    metadata={"tool": "web_search_serper"},
+                )
+                tool_span_ctx = tool_span_cm.__enter__()
+            except Exception as exc:  # pragma: no cover - best effort logging
+                logger.warning("Failed to start web-search span: %s", exc)
+                tool_span_cm = None
+
+        try:
+            result = await web_search_serper(context, query)
+            return result
+        except Exception as exc:
+            tool_error = exc
+            raise
+        finally:
+            if tool_span_ctx and tool_span_cm:
+                update_payload: dict[str, Any] = {}
+                if result is not None:
+                    update_payload["output"] = result
+                if tool_error:
+                    update_payload["error"] = str(tool_error)
+                if update_payload:
+                    try:
+                        tool_span_ctx.update(**update_payload)
+                    except Exception as update_exc:  # pragma: no cover - best effort logging
+                        logger.warning("Failed to update web-search span: %s", update_exc)
+                try:
+                    tool_span_cm.__exit__(
+                        type(tool_error) if tool_error else None,
+                        tool_error,
+                        tool_error.__traceback__ if tool_error else None,
+                    )
+                except Exception as close_exc:  # pragma: no cover - best effort logging
+                    logger.warning("Failed to close web-search span: %s", close_exc)
+            elif tool_span_cm:
+                try:
+                    tool_span_cm.__exit__(None, None, None)
+                except Exception as close_exc:  # pragma: no cover - best effort logging
+                    logger.warning("Failed to close web-search span: %s", close_exc)
 
     async def llm_node(
         self,
