@@ -75,6 +75,8 @@ jobs:
             LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             SERPER_API_KEY=${{ secrets.SERPER_API_KEY }}
+            KAIROZ_API_KEY=${{ secrets.KAIROZ_API_KEY }}
+            KAIROZ_PROMPT_LABEL=${{ vars.KAIROZ_PROMPT_LABEL }}
 
       - name: Update CloudFormation template with new image
         run: |

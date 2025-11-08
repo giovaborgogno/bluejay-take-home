@@ -16,12 +16,16 @@ ARG LIVEKIT_API_KEY
 ARG LIVEKIT_API_SECRET
 ARG LIVEKIT_URL
 ARG OPENAI_API_KEY
+ARG KAIROZ_API_KEY
+ARG KAIROZ_PROMPT_LABEL
 
 # Set them as environment variables
 ENV LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
 ENV LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
 ENV LIVEKIT_URL=${LIVEKIT_URL}
 ENV OPENAI_API_KEY=${OPENAI_API_KEY}
+ENV KAIROZ_API_KEY=${KAIROZ_API_KEY}
+ENV KAIROZ_PROMPT_LABEL=${KAIROZ_PROMPT_LABEL}
 
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
