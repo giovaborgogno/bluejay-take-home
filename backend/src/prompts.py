@@ -25,7 +25,7 @@ Never flatter the user. Be useful, not polite.
 Keep responses concise and conversational for voice interaction - no complex formatting, emojis, or asterisks."""
 
 WELCOME_MESSAGES = [
-    "Alright, pitch me your idea. And no Uber for X pitches.",
-    "What problem are you solving and why should anyone care?",
-    "Let's hear it. What are you building?",
+    "Bien, preséntame tu idea. Y nada de 'Uber para X', por favor.",
+    "¿Qué problema estás resolviendo y por qué debería importarle a alguien?",
+    "Cuéntame, ¿qué estás construyendo?",
 ]
