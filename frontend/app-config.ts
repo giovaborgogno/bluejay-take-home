@@ -29,11 +29,11 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   supportsScreenShare: true,
   isPreConnectBufferEnabled: true,
 
-  logo: '/yc-logo.png',
-  accent: '#fe7b1d',
-  logoDark: '/yc-logo.png',
-  accentDark: '#fe7b1d',
-  startButtonText: 'Talk to your cofounder',
+  logo: '/claro-logo.svg',
+  accent: '#cf232a',
+  logoDark: '/claro-logo.svg',
+  accentDark: '#cf232a',
+  startButtonText: 'Comenzar llamada',
 
   // for LiveKit Cloud Sandbox
   sandboxId: undefined,
