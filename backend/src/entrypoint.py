@@ -76,7 +76,7 @@ class _KairozSettings:
             logger.warning("Failed to initialize Kairoz client: %s", exc)
             return
 
-        prompt_name = os.getenv("KAIROZ_PROMPT_NAME", "cofounder-agent")
+        prompt_name = os.getenv("KAIROZ_PROMPT_NAME", "claro-agent")
         prompt_kwargs: dict[str, Any] = {}
         prompt_label = os.getenv("KAIROZ_PROMPT_LABEL")
         prompt_version = os.getenv("KAIROZ_PROMPT_VERSION")

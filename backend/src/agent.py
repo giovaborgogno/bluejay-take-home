@@ -56,13 +56,13 @@ class CofounderAgent(Agent):
     @staticmethod
     def _resolve_trace_name(config: dict[str, Any]) -> str:
         if not isinstance(config, dict):
-            return "cofounder-conversation"
+            return "claro-conversation"
 
         trace_name = config.get("trace_name") or config.get("conversation_trace_name")
         if isinstance(trace_name, str) and trace_name.strip():
             return trace_name.strip()
 
-        return "cofounder-conversation"
+        return "claro-conversation"
 
     @staticmethod
     def _filter_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
@@ -191,101 +191,101 @@ class CofounderAgent(Agent):
         rag_outputs: list[dict[str, Any]] = []
 
         # Only retrieve context if we have a user message
-        if user_msg and user_msg.text_content:
-            user_query = user_msg.text_content
+        # if user_msg and user_msg.text_content:
+        #     user_query = user_msg.text_content
 
-            # Retrieve relevant documents from the knowledge base
-            retriever = self.index.as_retriever(similarity_top_k=4)
-            if self._trace:
-                try:
-                    rag_span_cm = self._trace.span(
-                        name="rag-retrieval",
-                        input_data={"query": user_query},
-                        metadata={"source": "vector-store"},
-                    )
-                    rag_span_ctx = rag_span_cm.__enter__()
-                except Exception as exc:  # pragma: no cover - best effort logging
-                    logger.warning("Failed to start RAG span: %s", exc)
-                    rag_span_cm = None
-                    rag_span_ctx = None
+        #     # Retrieve relevant documents from the knowledge base
+        #     retriever = self.index.as_retriever(similarity_top_k=4)
+        #     if self._trace:
+        #         try:
+        #             rag_span_cm = self._trace.span(
+        #                 name="rag-retrieval",
+        #                 input_data={"query": user_query},
+        #                 metadata={"source": "vector-store"},
+        #             )
+        #             rag_span_ctx = rag_span_cm.__enter__()
+        #         except Exception as exc:  # pragma: no cover - best effort logging
+        #             logger.warning("Failed to start RAG span: %s", exc)
+        #             rag_span_cm = None
+        #             rag_span_ctx = None
 
-            try:
-                nodes = await retriever.aretrieve(user_query)
-            except Exception as exc:
-                rag_error = exc
-                nodes = []
-                logger.warning("RAG retrieval failed: %s", exc)
-            if rag_error:
-                logger.debug("Continuing without RAG context due to retrieval error.")
+        #     try:
+        #         nodes = await retriever.aretrieve(user_query)
+        #     except Exception as exc:
+        #         rag_error = exc
+        #         nodes = []
+        #         logger.warning("RAG retrieval failed: %s", exc)
+        #     if rag_error:
+        #         logger.debug("Continuing without RAG context due to retrieval error.")
 
-            # Build context from retrieved documents
-            if nodes:
-                instructions = "\n\nRelevant context from Zero to One by Peter Thiel:"
-                for node in nodes:
-                    node_content = node.get_content(metadata_mode=MetadataMode.LLM)
-                    chapter = node.metadata.get("chapter", "Unknown Chapter")
-                    chapter_num = node.metadata.get("chapter_number")
-                    page_num = node.metadata.get("page_number", "?")
-                    rag_outputs.append(
-                        {
-                            "chapter": chapter,
-                            "chapter_number": chapter_num,
-                            "page_number": page_num,
-                            "content": node_content,
-                        }
-                    )
+        #     # Build context from retrieved documents
+        #     if nodes:
+        #         instructions = "\n\nRelevant context from Zero to One by Peter Thiel:"
+        #         for node in nodes:
+        #             node_content = node.get_content(metadata_mode=MetadataMode.LLM)
+        #             chapter = node.metadata.get("chapter", "Unknown Chapter")
+        #             chapter_num = node.metadata.get("chapter_number")
+        #             page_num = node.metadata.get("page_number", "?")
+        #             rag_outputs.append(
+        #                 {
+        #                     "chapter": chapter,
+        #                     "chapter_number": chapter_num,
+        #                     "page_number": page_num,
+        #                     "content": node_content,
+        #                 }
+        #             )
 
-                    # Format with chapter and page info
-                    # Gracefully handle None for chapter_num
-                    if chapter_num is not None:
-                        instructions += f"\n\n[{chapter_num}: {chapter}, p. {page_num}]\n{node_content}"
-                    else:
-                        instructions += (
-                            f"\n\n[{chapter}, p. {page_num}]\n{node_content}"
-                        )
+        #             # Format with chapter and page info
+        #             # Gracefully handle None for chapter_num
+        #             if chapter_num is not None:
+        #                 instructions += f"\n\n[{chapter_num}: {chapter}, p. {page_num}]\n{node_content}"
+        #             else:
+        #                 instructions += (
+        #                     f"\n\n[{chapter}, p. {page_num}]\n{node_content}"
+        #                 )
 
-                # Inject the retrieved context into the chat context
-                system_msg = chat_ctx.items[0]
-                if (
-                    isinstance(system_msg, llm.ChatMessage)
-                    and system_msg.role == "system"
-                ):
-                    system_msg.content.append(instructions)
-                else:
-                    chat_ctx.items.insert(
-                        0, llm.ChatMessage(role="system", content=[instructions])
-                    )
+        #         # Inject the retrieved context into the chat context
+        #         system_msg = chat_ctx.items[0]
+        #         if (
+        #             isinstance(system_msg, llm.ChatMessage)
+        #             and system_msg.role == "system"
+        #         ):
+        #             system_msg.content.append(instructions)
+        #         else:
+        #             chat_ctx.items.insert(
+        #                 0, llm.ChatMessage(role="system", content=[instructions])
+        #             )
 
-                logger.info(
-                    f"Retrieved {len(nodes)} chunks for query: {user_query[:50]}..."
-                )
+        #         logger.info(
+        #             f"Retrieved {len(nodes)} chunks for query: {user_query[:50]}..."
+        #         )
 
-            if rag_span_ctx and rag_span_cm:
-                span_update: dict[str, Any] = {"chunks": len(nodes)}
-                if rag_outputs:
-                    span_update["context"] = rag_outputs
-                if rag_error:
-                    span_update["error"] = str(rag_error)
-                try:
-                    rag_span_ctx.update(output=span_update)
-                except Exception as span_exc:  # pragma: no cover - best effort logging
-                    logger.warning("Failed to update RAG span: %s", span_exc)
-                try:
-                    rag_span_cm.__exit__(
-                        type(rag_error) if rag_error else None,
-                        rag_error,
-                        rag_error.__traceback__ if rag_error else None,
-                    )
-                except Exception as span_exc:  # pragma: no cover - best effort logging
-                    logger.warning("Failed to close RAG span: %s", span_exc)
-                rag_span_ctx = None
-                rag_span_cm = None
-            elif rag_span_cm:
-                try:
-                    rag_span_cm.__exit__(None, None, None)
-                except Exception as span_exc:  # pragma: no cover - best effort logging
-                    logger.warning("Failed to close RAG span: %s", span_exc)
-                rag_span_cm = None
+        #     if rag_span_ctx and rag_span_cm:
+        #         span_update: dict[str, Any] = {"chunks": len(nodes)}
+        #         if rag_outputs:
+        #             span_update["context"] = rag_outputs
+        #         if rag_error:
+        #             span_update["error"] = str(rag_error)
+        #         try:
+        #             rag_span_ctx.update(output=span_update)
+        #         except Exception as span_exc:  # pragma: no cover - best effort logging
+        #             logger.warning("Failed to update RAG span: %s", span_exc)
+        #         try:
+        #             rag_span_cm.__exit__(
+        #                 type(rag_error) if rag_error else None,
+        #                 rag_error,
+        #                 rag_error.__traceback__ if rag_error else None,
+        #             )
+        #         except Exception as span_exc:  # pragma: no cover - best effort logging
+        #             logger.warning("Failed to close RAG span: %s", span_exc)
+        #         rag_span_ctx = None
+        #         rag_span_cm = None
+        #     elif rag_span_cm:
+        #         try:
+        #             rag_span_cm.__exit__(None, None, None)
+        #         except Exception as span_exc:  # pragma: no cover - best effort logging
+        #             logger.warning("Failed to close RAG span: %s", span_exc)
+        #         rag_span_cm = None
 
         # Call the default LLM node with the enriched context
         activity = None
